@@ -1,0 +1,8 @@
+title = "SecOps Gitleaks Configuration"
+
+[[rules]]
+id = "test-password"
+description = "Detect test password used for SecOps pipeline testing"
+regex = '''TEST_PASSWORD\s*=\s*[^\s]+'''
+secretGroup = 0
+keywords = ["TEST_PASSWORD"]
