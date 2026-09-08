@@ -35,23 +35,31 @@ jobs:
           echo "Checked Out Commit SHA:"
           git -C application rev-parse HEAD
 
+      # Copy the central SecOps Gitleaks configuration
+      # into the application scanning directory.
+      - name: Prepare Gitleaks Configuration
+        run: |
+          cp .gitleaks.toml application/.gitleaks.toml
+          echo "Gitleaks configuration copied successfully"
+          echo "Configuration file:"
+          ls -l application/.gitleaks.toml
+
       # Scan the checked-out application source for secrets
-      # using the custom Gitleaks configuration
+      # using the central SecOps Gitleaks configuration.
       - name: Step 4 - Scan for Application Secrets
         run: |
           docker run --rm \
-            -v "${GITHUB_WORKSPACE}/application:/repo" \
-            -v "${GITHUB_WORKSPACE}/.gitleaks.toml:/config/.gitleaks.toml:ro" \
+            -v "${GITHUB_WORKSPACE}/application:/repo:ro" \
             ghcr.io/gitleaks/gitleaks:latest \
             detect \
             --source=/repo \
-            --config=/config/.gitleaks.toml \
+            --config=/repo/.gitleaks.toml \
             --no-git \
             --no-banner \
             --exit-code 1
 
       # List all files inside the application checkout
-      # even if the Gitleaks scan fails
+      # even if the Gitleaks scan fails.
       - name: Step 4A - List Scanned Files
         if: always()
         run: |
