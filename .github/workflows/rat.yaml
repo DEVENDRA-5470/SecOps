@@ -20,7 +20,16 @@ jobs:
           echo "Application Branch: ${{ github.event.client_payload.branch }}"
           echo "Application Commit SHA: ${{ github.event.client_payload.commit_sha }}"
 
-      # Checkout the exact application commit that triggered the SecOps pipeline
+      # Checkout the SecOps repository.
+      # This gives the pipeline access to the central
+      # .gitleaks.toml configuration file.
+      - name: Checkout SecOps Repository
+        uses: actions/checkout@v4
+        with:
+          path: secops
+
+      # Checkout the exact application commit that triggered
+      # the SecOps pipeline.
       - name: Checkout Exact Application Commit
         uses: actions/checkout@v4
         with:
@@ -28,10 +37,13 @@ jobs:
           ref: ${{ github.event.client_payload.commit_sha }}
           path: application
 
-      # Verify that the checked-out commit matches the received commit SHA
+      # Verify that the checked-out application commit
+      # matches the commit received from the Application repository.
       - name: Verify Checked Out Commit
         run: |
           echo "Application Source Successfully checked out"
+          echo "Received Commit SHA:"
+          echo "${{ github.event.client_payload.commit_sha }}"
           echo "Checked Out Commit SHA:"
           git -C application rev-parse HEAD
 
@@ -39,7 +51,7 @@ jobs:
       # into the application scanning directory.
       - name: Prepare Gitleaks Configuration
         run: |
-          cp .gitleaks.toml application/.gitleaks.toml
+          cp secops/.gitleaks.toml application/.gitleaks.toml
           echo "Gitleaks configuration copied successfully"
           echo "Configuration file:"
           ls -l application/.gitleaks.toml
