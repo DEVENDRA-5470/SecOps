@@ -42,7 +42,23 @@ jobs:
             --source=/repo \
             --no-git \
             --no-banner \
+            --report-format json \
+            --report-path /repo/gitleaks-report.json \
             --exit-code 1
+
+      # NEW STEP: show which secrets were found (runs even if the scan step above fails)
+      - name: Step 4B - Show Detected Secrets
+        if: always()
+        run: |
+          echo "Gitleaks Findings:"
+          echo "====================================="
+          if [ -f "application/gitleaks-report.json" ]; then
+            cat application/gitleaks-report.json | jq -r '
+              .[] | "File: \(.File)\nLine: \(.StartLine)\nRule: \(.RuleID)\nSecret: \(.Match)\nCommit: \(.Commit // "N/A")\n---"
+            '
+          else
+            echo "No report file found — either no secrets were detected or the scan did not run."
+          fi
 
       - name: Step 4A - List Scanned Files
         run: |
