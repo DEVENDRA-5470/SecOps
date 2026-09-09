@@ -11,40 +11,112 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Display Received Application Information
         run: |
-          echo "SecOps Repo received Application trigger"
+          echo "======================================"
+          echo "     APPLICATION TRIGGER RECEIVED"
+          echo "======================================"
           echo "Application Repository: ${{ github.event.client_payload.repository }}"
-          echo "Application Branch: ${{ github.event.client_payload.branch }}"
+          echo "Application Branch:     ${{ github.event.client_payload.branch }}"
           echo "Application Commit SHA: ${{ github.event.client_payload.commit_sha }}"
+          echo "======================================"
 
       - name: Checkout Exact Application Commit
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repository }}
           ref: ${{ github.event.client_payload.commit_sha }}
+          token: ${{ secrets.APP_REPO_READ_TOKEN }}
           path: application
 
       - name: Verify Checked Out Commit
         run: |
-          echo "Application Source Successfully checked out"
-          echo "Checked Out Commit SHA:"
+          echo "======================================"
+          echo "     APPLICATION SOURCE CHECKOUT"
+          echo "======================================"
+          echo "Application Source Successfully Checked Out"
+          echo ""
+          echo "Expected Commit:"
+          echo "${{ github.event.client_payload.commit_sha }}"
+          echo ""
+          echo "Actual Checked Out Commit:"
           git -C application rev-parse HEAD
+          echo "======================================"
 
-      # Scan the checked-out application source for secrets
-      - name: Step 4 - Scan for Application Secrets
+      - name: Step 4 - Scan Application for Secrets
+        id: gitleaks
+        continue-on-error: true
         run: |
+          mkdir -p gitleaks-report
+
           docker run --rm \
-            -v "${GITHUB_WORKSPACE}/application:/repo" \
+            -v "${GITHUB_WORKSPACE}/application:/repo:ro" \
+            -v "${GITHUB_WORKSPACE}/gitleaks-report:/report" \
             ghcr.io/gitleaks/gitleaks:latest \
             detect \
             --source=/repo \
             --no-git \
             --no-banner \
+            --report-format=json \
+            --report-path=/report/gitleaks.json \
             --exit-code 1
 
-      - name: Step 4A - List Scanned Files
+      - name: Step 4A - Display Secret Findings
+        if: always()
         run: |
-          echo "Files Inside Gitleaks Scanning Scope:"
-          echo "====================================="
-          find application -type f -print
+          echo ""
+          echo "======================================"
+          echo "       GITLEAKS SECRET FINDINGS"
+          echo "======================================"
+
+          if [ ! -f gitleaks-report/gitleaks.json ]; then
+            echo "No Gitleaks report generated."
+            echo "======================================"
+            exit 0
+          fi
+
+          FINDINGS=$(jq 'length' gitleaks-report/gitleaks.json)
+
+          if [ "$FINDINGS" -eq 0 ]; then
+            echo "No secrets detected."
+            echo "======================================"
+            exit 0
+          fi
+
+          echo "Secrets detected: $FINDINGS"
+          echo ""
+
+          jq -r '
+            .[] |
+            "File        : \(.File)\n" +
+            "Line        : \(.StartLine)\n" +
+            "Rule ID     : \(.RuleID)\n" +
+            "Description : \(.Description)\n" +
+            "Secret      : [REDACTED]\n" +
+            "--------------------------------------"
+          ' gitleaks-report/gitleaks.json
+
+          echo "======================================"
+
+      - name: Step 4B - Fail If Secrets Detected
+        if: always()
+        run: |
+          if [ -f gitleaks-report/gitleaks.json ]; then
+
+            FINDINGS=$(jq 'length' gitleaks-report/gitleaks.json)
+
+            if [ "$FINDINGS" -gt 0 ]; then
+              echo ""
+              echo "❌ SECURITY CHECK FAILED"
+              echo ""
+              echo "Gitleaks detected $FINDINGS secret(s)."
+              echo "Remove the exposed secret(s) before merging."
+              exit 1
+            fi
+
+          fi
+
+          echo ""
+          echo "✅ SECURITY CHECK PASSED"
+          echo "No secrets detected."
