@@ -93,4 +93,4 @@ jobs:
           echo "====================================="
           echo "SonarQube Analysis Complete"
           echo "====================================="
-          echo "Backend Dashboard:  http://localhost:9000/dashboard?id=hireflow-backend"
+          echo "Backend Dashboard: http://${{ vars.SONAR_HOST }}/dashboard?id=hireflow-backend"
