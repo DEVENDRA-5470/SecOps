@@ -135,7 +135,10 @@ jobs:
       #       -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/** \
       #       -Dsonar.host.url=http://localhost:9000 \
       #       -Dsonar.token=${{ secrets.SONAR_TOKEN }}
-
+      - name: Debug Sonar Report
+        run: |
+          echo "Searching For report-task.txt......."
+          find "${GITHUB_WORKSPACE}/application" -type f -name "report-task.txt" -print
       - name: SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@master
         with:
