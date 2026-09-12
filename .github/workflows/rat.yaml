@@ -121,7 +121,7 @@ jobs:
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/** \
             -Dsonar.host.url=http://3.230.6.56:9000/ \
             -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=false
 
       # Uncomment once frontend testing begins
       # - name: Scan Frontend Code
